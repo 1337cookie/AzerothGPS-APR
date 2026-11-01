@@ -5,6 +5,7 @@
 ## Notes: Connects Azeroth Pilot Reloaded waypoints into AzerothGPS navigation paths.
 ## Author: dev
 ## Version: 1.0.0
+## IconTexture: Interface\AddOns\AzerothGPS-APR\logo.png
 ## Dependencies: AzerothGPS, APR
 ## OptionalDeps: azeroth-pilot-reloaded
 ## SavedVariables: AzerothGPS_APR_DB
