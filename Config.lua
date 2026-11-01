@@ -178,6 +178,18 @@ local function RegisterOptionsPage()
             function() return ns.DB and ns.DB.autoClear end,
             function(v) if ns.DB then ns.DB.autoClear = v end end,
             function() return ns.DB and ns.DB.enabled end)
+        ui.check("Minimap Button",
+            "Show the APR waypoint toggle button on the Minimap. Left-click toggles APR waypoints; Right-click opens these options.",
+            function() return ns.DB and ns.DB.minimap and not ns.DB.minimap.hide end,
+            function(v)
+                if ns.DB then
+                    ns.DB.minimap = ns.DB.minimap or {}
+                    ns.DB.minimap.hide = not v
+                    if ns.UpdateMinimapButton then
+                        ns:UpdateMinimapButton()
+                    end
+                end
+            end)
 
         ui.check("Debug Logging",
             "Print route synchronization and coordinate debug messages to the chat frame.",
@@ -269,6 +281,21 @@ SlashCmdList.AZEROTHGPSAPR = function(msg)
             ns.DB.debug = not ns.DB.debug
             ns.Print("Debug logging " .. (ns.DB.debug and "enabled." or "disabled."))
         end
+    elseif cmd == "minimap" then
+        if ns.DB then
+            ns.DB.minimap = ns.DB.minimap or {}
+            if arg == "on" or arg == "show" then
+                ns.DB.minimap.hide = false
+            elseif arg == "off" or arg == "hide" then
+                ns.DB.minimap.hide = true
+            else
+                ns.DB.minimap.hide = not ns.DB.minimap.hide
+            end
+            if ns.UpdateMinimapButton then
+                ns:UpdateMinimapButton()
+            end
+            ns.Print("Minimap button " .. (ns.DB.minimap.hide and "hidden." or "shown."))
+        end
     elseif cmd == "clear" then
         if ns.agps and ns.agps.Nav then
             ns.agps.Nav.Clear()
@@ -286,6 +313,7 @@ SlashCmdList.AZEROTHGPSAPR = function(msg)
         ns.Print("  /aprgps numbering [ordered|apr] - Switch between Ordered (1, 2, 3) and APR step numbers")
         ns.Print("  /aprgps panelicon [marker|quest|raid] - Set directions panel icon style")
         ns.Print("  /aprgps clear - Clear active route")
+        ns.Print("  /aprgps minimap [on|off] - Toggle or set minimap button visibility")
         ns.Print("  /aprgps debug - Toggle debug logging")
     else
         -- Open AzerothGPS options window at the APR Integration page

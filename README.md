@@ -45,6 +45,7 @@ The addon integrates directly into AzerothGPS's options window:
   - `Colored Raid Target Symbols`: Uses raid marker symbols next to direction steps.
 - **Show APR Step in Name**:
   - Prefixes the APR guide step number (e.g. `104. Accept: A Threat Within`) in destination names and tooltips. The directions panel continues to provide ordered turn-by-turn numbers starting at 1 (`1. Walk 50 yd to... 104. Accept: A Threat Within`).
+- **Minimap Button**: Circular button with the addon logo on your minimap. Left-click to toggle APR waypoints on/off with on-screen notice; Right-click to open options; Drag to reposition.
 - **Hide APR Arrow**: Optional setting to hide APR's default arrow so only AzerothGPS's arrow directs you.
 - **Auto-Clear Route**: Automatically clears the GPS route when APR has no active arrow or the route finishes.
 ### Slash Commands
@@ -55,6 +56,7 @@ The addon integrates directly into AzerothGPS's options window:
 - `/aprgps color [theme|gradient|rainbow|blue|green|gold|purple|orange|red|cyan|pink]` - Set pin & path color
 - `/aprgps numbering [ordered|apr]` - Switch between sequential (1, 2, 3) and guide (104, 105...) step numbers
 - `/aprgps panelicon [marker|quest|raid]` - Change directions panel icon style
+- `/aprgps minimap [on|off]` - Toggle or set minimap button visibility
 - `/aprgps clear` - Clear the active route
 - `/aprgps debug` - Toggle debug logs in chat
 - `/aprgps help` - List available commands

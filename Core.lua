@@ -24,6 +24,7 @@ ns.DEFAULTS = {
     hideAPRArrow = false,        -- hide APR's default arrow while AGPS route is active
     autoClear = true,            -- clear route when APR has no active arrow/waypoint
     debug = false,               -- debug logging in chat
+    minimap = { hide = false, angle = 200 }, -- minimap button settings
 }
 
 ns.DB = nil
@@ -1123,13 +1124,31 @@ function ns:RequestSync(force)
     end)
 end
 
+function ns:Announce(msg, r, g, b)
+    r, g, b = r or 1, g or 1, b or 1
+    -- 1. RaidWarningFrame or custom RaidWarningFrameTemplate
+    if _G.RaidWarningFrame and _G.RaidWarningFrame.AddMessage then
+        pcall(function()
+            _G.RaidWarningFrame:AddMessage(msg, r, g, b, 1.0, 3)
+        end)
+    end
+    -- 2. UIErrorsFrame as fallback
+    if _G.UIErrorsFrame and _G.UIErrorsFrame.AddMessage then
+        pcall(function()
+            _G.UIErrorsFrame:AddMessage(msg, r, g, b, 1.0, 3)
+        end)
+    end
+end
+
 function ns:OnToggle(enabled)
     self.DB.enabled = enabled
     if enabled then
         Print("APR sync enabled.")
+        self:Announce("|cff73ff73AzerothGPS: APR Waypoints ON|r", 0.45, 1.0, 0.45)
         self:RequestSync(true)
     else
         Print("APR sync disabled.")
+        self:Announce("|cffff5555AzerothGPS: APR Waypoints OFF|r", 1.0, 0.33, 0.33)
         if self.ownsRoute and self.agps and self.agps.Nav then
             self.agps.Nav.Clear()
             self.ownsRoute = false
@@ -1140,8 +1159,138 @@ function ns:OnToggle(enabled)
         if APR and APR.Arrow and APR.Arrow.RefreshVisibility then
             APR.Arrow:RefreshVisibility()
         end
+        self:UpdateStopPinBadges()
+        self:UpdateMinimapPin()
+    end
+    if self.UpdateMinimapButton then
+        self:UpdateMinimapButton()
     end
 end
+
+-----------------------------------------------------------------------------------------
+-- Minimap Button
+-----------------------------------------------------------------------------------------
+
+local function PlaceMinimapButton()
+    local btn = ns.minimapButton
+    if not btn or not Minimap then return end
+    local db = ns.DB and ns.DB.minimap or {}
+    local angle = math.rad(db.angle or 200)
+    local radius = (Minimap:GetWidth() / 2) + 5
+    btn:ClearAllPoints()
+    btn:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * radius, math.sin(angle) * radius)
+end
+
+function ns:UpdateMinimapButton()
+    local btn = self.minimapButton
+    if not btn then return end
+    local db = self.DB and self.DB.minimap or {}
+    if db.hide then
+        btn:Hide()
+        return
+    end
+    btn:Show()
+    PlaceMinimapButton()
+
+    -- Dim icon slightly if disabled
+    if btn.icon then
+        if self.DB and self.DB.enabled then
+            btn.icon:SetVertexColor(1, 1, 1, 1)
+        else
+            btn.icon:SetVertexColor(0.5, 0.5, 0.5, 0.8)
+        end
+    end
+end
+
+function ns:InitMinimapButton()
+    if self.minimapButton or not CreateFrame or not Minimap then return end
+
+    local b = CreateFrame("Button", "AzerothGPS_APR_MinimapButton", Minimap)
+    b:SetSize(31, 31)
+    b:SetFrameStrata("MEDIUM")
+    b:SetFrameLevel(9)
+    b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    b:RegisterForDrag("LeftButton")
+    b:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+
+    local bg = b:CreateTexture(nil, "BACKGROUND")
+    bg:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
+    bg:SetSize(20, 20)
+    bg:SetPoint("CENTER")
+    b.bg = bg
+
+    local icon = b:CreateTexture(nil, "ARTWORK")
+    icon:SetTexture("Interface\\AddOns\\AzerothGPS-APR\\logo.png")
+    icon:SetSize(20, 20)
+    icon:SetPoint("CENTER")
+    b.icon = icon
+
+    local border = b:CreateTexture(nil, "OVERLAY")
+    border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+    border:SetSize(52, 52)
+    border:SetPoint("TOPLEFT")
+    b.border = border
+
+    b:SetScript("OnClick", function(_, mouse)
+        if mouse == "RightButton" then
+            if _G.AzerothGPS and _G.AzerothGPS.ShowOptions then
+                local opened = _G.AzerothGPS.ShowOptions("APR Integration", "AzerothGPS_APR")
+                if not opened then
+                    _G.AzerothGPS.ShowOptions()
+                end
+            else
+                ns.Print("AzerothGPS options window not available. Use '/aprgps help' for commands.")
+            end
+        else
+            if ns.DB then
+                ns:OnToggle(not ns.DB.enabled)
+            end
+        end
+    end)
+
+    b:SetScript("OnDragStart", function(self)
+        self:SetScript("OnUpdate", function()
+            local mx, my = Minimap:GetCenter()
+            local cx, cy = GetCursorPosition()
+            local scale = Minimap:GetEffectiveScale()
+            if not mx or not my or not cx or not cy or not scale or scale == 0 then return end
+            local deg = math.deg(math.atan2(cy / scale - my, cx / scale - mx))
+            if ns.DB then
+                ns.DB.minimap = ns.DB.minimap or {}
+                ns.DB.minimap.angle = deg
+            end
+            PlaceMinimapButton()
+        end)
+    end)
+
+    b:SetScript("OnDragStop", function(self)
+        self:SetScript("OnUpdate", nil)
+    end)
+
+    b:SetScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:SetText("AzerothGPS: APR Bridge", 1, 1, 1)
+        local status = (ns.DB and ns.DB.enabled) and "|cff73ff73Enabled|r" or "|cffff5555Disabled|r"
+        GameTooltip:AddLine("Waypoints: " .. status, nil, nil, nil)
+        GameTooltip:AddLine("Left-click: Toggle APR waypoints on/off", 0.8, 0.8, 0.8)
+        GameTooltip:AddLine("Right-click: Open settings", 0.8, 0.8, 0.8)
+        GameTooltip:AddLine("Drag: Move this button", 0.6, 0.6, 0.6)
+        GameTooltip:Show()
+    end)
+
+    b:SetScript("OnLeave", function()
+        if GameTooltip_Hide then
+            GameTooltip_Hide()
+        elseif GameTooltip and GameTooltip.Hide then
+            GameTooltip:Hide()
+        end
+    end)
+
+    self.minimapButton = b
+    self:UpdateMinimapButton()
+end
+
 
 -----------------------------------------------------------------------------------------
 -- Hooks and Events
@@ -1489,6 +1638,7 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1, ...)
             end
         end
     elseif event == "PLAYER_LOGIN" then
+        ns:InitMinimapButton()
         InitBridge()
     elseif event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" or event == "ZONE_CHANGED" then
         if ns.started then
