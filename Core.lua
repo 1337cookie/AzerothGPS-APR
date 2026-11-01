@@ -1171,25 +1171,45 @@ end
 -- Minimap Button
 -----------------------------------------------------------------------------------------
 
+function ns:MinimapButtonOwned()
+    return self.minimapButton and self.minimapButton:GetParent() == Minimap
+end
+
 local function PlaceMinimapButton()
+    if not ns:MinimapButtonOwned() then return end
     local btn = ns.minimapButton
     if not btn or not Minimap then return end
     local db = ns.DB and ns.DB.minimap or {}
     local angle = math.rad(db.angle or 200)
     local radius = (Minimap:GetWidth() / 2) + 5
+    local x, y = math.cos(angle), math.sin(angle)
+    -- Support square minimap edge clamp (as in AzerothGPS / EllesmereUI / GetMinimapShape)
+    local isSquare = false
+    if _G.AzerothGPS and _G.AzerothGPS.MinimapSquare then
+        isSquare = _G.AzerothGPS.MinimapSquare()
+    elseif ns.agps and ns.agps.GPS and ns.agps.GPS.MinimapSquare then
+        isSquare = ns.agps.GPS.MinimapSquare()
+    elseif GetMinimapShape then
+        isSquare = (GetMinimapShape() == "SQUARE")
+    end
+    if isSquare then
+        local q = math.max(math.abs(x), math.abs(y))
+        if q > 0 then x, y = x / q, y / q end
+    end
     btn:ClearAllPoints()
-    btn:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * radius, math.sin(angle) * radius)
+    btn:SetPoint("CENTER", Minimap, "CENTER", x * radius, y * radius)
 end
 
 function ns:UpdateMinimapButton()
     local btn = self.minimapButton
     if not btn then return end
     local db = self.DB and self.DB.minimap or {}
-    if db.hide then
-        btn:Hide()
-        return
+    local hide = db.hide and true or false
+    -- Only touch visibility if changed; do not force Show() or Hide() if taken by a button drawer
+    if self._minimapBtnHide ~= hide then
+        self._minimapBtnHide = hide
+        btn:SetShown(not hide)
     end
-    btn:Show()
     PlaceMinimapButton()
 
     -- Dim icon slightly if disabled
@@ -1201,7 +1221,6 @@ function ns:UpdateMinimapButton()
         end
     end
 end
-
 function ns:InitMinimapButton()
     if self.minimapButton or not CreateFrame or not Minimap then return end
 
@@ -1249,6 +1268,7 @@ function ns:InitMinimapButton()
     end)
 
     b:SetScript("OnDragStart", function(self)
+        if not ns:MinimapButtonOwned() then return end
         self:SetScript("OnUpdate", function()
             local mx, my = Minimap:GetCenter()
             local cx, cy = GetCursorPosition()
@@ -1275,7 +1295,9 @@ function ns:InitMinimapButton()
         GameTooltip:AddLine("Waypoints: " .. status, nil, nil, nil)
         GameTooltip:AddLine("Left-click: Toggle APR waypoints on/off", 0.8, 0.8, 0.8)
         GameTooltip:AddLine("Right-click: Open settings", 0.8, 0.8, 0.8)
-        GameTooltip:AddLine("Drag: Move this button", 0.6, 0.6, 0.6)
+        if ns:MinimapButtonOwned() then
+            GameTooltip:AddLine("Drag: Move this button", 0.6, 0.6, 0.6)
+        end
         GameTooltip:Show()
     end)
 
