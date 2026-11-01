@@ -1,0 +1,13 @@
+## Interface: 16001, 110207, 120000, 120001, 120005, 120007, 120100, 120105
+## Interface-Retail: 110207, 120000, 120001, 120005, 120007, 120100, 120105
+## Interface-Camelot: 16001
+## Title: AzerothGPS: APR Bridge
+## Notes: Connects Azeroth Pilot Reloaded waypoints into AzerothGPS navigation paths.
+## Author: dev
+## Version: 1.0.0
+## Dependencies: AzerothGPS, APR
+## OptionalDeps: azeroth-pilot-reloaded
+## SavedVariables: AzerothGPS_APR_DB
+
+Core.lua
+Config.lua
